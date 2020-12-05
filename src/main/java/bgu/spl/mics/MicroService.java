@@ -1,5 +1,7 @@
 package bgu.spl.mics;
 
+import java.util.Queue;
+
 /**
  * The MicroService is an abstract class that any micro-service in the system
  * must extend. The abstract MicroService class is responsible to get and
@@ -20,7 +22,7 @@ package bgu.spl.mics;
  */
 public abstract class MicroService implements Runnable { 
     private String name;
-    private MessageBus messageBus;
+    private MessageBusImpl messageBus;
     protected Callback eventCallback;
     protected Callback broadcastCallback;
 
@@ -49,12 +51,11 @@ public abstract class MicroService implements Runnable {
      * @param <E>      The type of event to subscribe to.
      * @param <T>      The type of result expected for the subscribed event.
      * @param type     The {@link Class} representing the type of event to
-     *                 subscribe to.
+ *                 subscribe to.
      * @param callback The callback that should be called when messages of type
-     *                 {@code type} are taken from this micro-service message
-     *                 queue.
+*                 {@code type} are taken from this micro-service message
      */
-    protected final <T, E extends Event<T>> void subscribeEvent(Class<E> type, Callback<E> callback) {
+    protected final <T, E extends Event<T>> void subscribeEvent(Class<E> type, Callback<Event<?>> callback) {
     	messageBus.subscribeEvent(type,this);
     	this.eventCallback = callback;
     }
@@ -153,6 +154,15 @@ public abstract class MicroService implements Runnable {
     @Override
     public final void run() {
     	this.messageBus.register(this);
+    	this.initialize();
+    }
+
+    public Message getNextMessage()  {
+        try {
+            return this.messageBus.awaitMessage(this);
+        }
+        catch (InterruptedException e){}
+        return null;
     }
 
 }
