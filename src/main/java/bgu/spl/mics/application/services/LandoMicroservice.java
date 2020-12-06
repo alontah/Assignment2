@@ -1,5 +1,6 @@
 package bgu.spl.mics.application.services;
 
+import bgu.spl.mics.Callback;
 import bgu.spl.mics.Event;
 import bgu.spl.mics.Message;
 import bgu.spl.mics.MicroService;
@@ -15,6 +16,7 @@ public class LandoMicroservice  extends MicroService {
     private long duration;
     private Message nextMessage;
     private boolean result;// need to figure out what the results are
+    Class destroyerEventClass = DestroyerEvent.class;
 
     public LandoMicroservice(long duration) {
         super("Lando");
@@ -23,20 +25,27 @@ public class LandoMicroservice  extends MicroService {
         result = false;
     }
 
+    /**
+     * To Do:
+     * sub broadcast
+     */
+
     @Override
     protected void initialize() {
-        //wait until destroyer event received
-        //destroy
-        while (nextMessage == null){
-            nextMessage = getNextMessage();
-            if (nextMessage instanceof DestroyerEvent){
+        subscribeEvent(destroyerEventClass, new Callback<Event<?>>() {
+            @Override
+            public void call(Event<?> c) {
                 try {
                     Thread.sleep(duration);
-                } catch (InterruptedException e) { }
+                }catch (InterruptedException e){}
+            }
+        });
+        while (nextMessage == null){
+            nextMessage = getNextMessage();
+            getCallback(nextMessage.getClass()).call(nextMessage);
+            if (nextMessage instanceof DestroyerEvent){
                 result = true;
                 complete((Event) nextMessage, result);
-            }
-            else { //broadcast message - need to figure out what to do with it
             }
             nextMessage = null;//reset
         }

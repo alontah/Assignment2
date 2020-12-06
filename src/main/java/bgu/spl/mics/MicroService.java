@@ -1,5 +1,6 @@
 package bgu.spl.mics;
 
+import java.util.HashMap;
 import java.util.Queue;
 
 /**
@@ -23,8 +24,7 @@ import java.util.Queue;
 public abstract class MicroService implements Runnable { 
     private String name;
     private MessageBusImpl messageBus;
-    protected Callback eventCallback;
-    protected Callback broadcastCallback;
+    private HashMap<Class,Callback> myMap;
 
     /**
      * @param name the micro-service name (used mainly for debugging purposes -
@@ -33,6 +33,7 @@ public abstract class MicroService implements Runnable {
     public MicroService(String name) {
     	this.name = name;
     	this.messageBus = MessageBusImpl.getInstance();
+    	this.myMap = new HashMap<Class, Callback>();
     }
 
     /**
@@ -57,7 +58,7 @@ public abstract class MicroService implements Runnable {
      */
     protected final <T, E extends Event<T>> void subscribeEvent(Class<E> type, Callback<Event<?>> callback) {
     	messageBus.subscribeEvent(type,this);
-    	this.eventCallback = callback;
+    	myMap.put(type,callback);
     }
 
     /**
@@ -82,7 +83,7 @@ public abstract class MicroService implements Runnable {
      */
     protected final <B extends Broadcast> void subscribeBroadcast(Class<B> type, Callback<B> callback) {
     	messageBus.subscribeBroadcast(type,this);
-    	this.broadcastCallback = callback;
+        myMap.put(type,callback);
     }
 
     /**
@@ -157,12 +158,16 @@ public abstract class MicroService implements Runnable {
     	this.initialize();
     }
 
-    public Message getNextMessage()  {
+    protected Message getNextMessage()  {
         try {
             return this.messageBus.awaitMessage(this);
         }
         catch (InterruptedException e){}
         return null;
+    }
+
+    protected Callback getCallback(Class type){
+        return myMap.get(type);
     }
 
 }
