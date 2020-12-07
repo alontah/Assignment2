@@ -1,6 +1,5 @@
 package bgu.spl.mics.application.services;
 
-import bgu.spl.mics.Event;
 import bgu.spl.mics.Future;
 import bgu.spl.mics.MicroService;
 import bgu.spl.mics.application.messages.AttackEvent;
@@ -8,6 +7,7 @@ import bgu.spl.mics.application.messages.DestroyerEvent;
 import bgu.spl.mics.application.messages.ShieldEvent;
 import bgu.spl.mics.application.messages.terminateBroadcast;
 import bgu.spl.mics.application.passiveObjects.Attack;
+import bgu.spl.mics.application.passiveObjects.Diary;
 
 import java.util.Vector;
 
@@ -22,6 +22,7 @@ import java.util.Vector;
 public class LeiaMicroservice extends MicroService {
 	private Attack[] attacks;
 	private Vector<Future> futures;
+    private Diary myDiary = Diary.getInstance();
 
     public LeiaMicroservice(Attack[] attacks) {
         super("Leia");
@@ -60,7 +61,10 @@ public class LeiaMicroservice extends MicroService {
                 wait();
             }catch (InterruptedException e) {}
         }
-        sendBroadcast(new terminateBroadcast());
-        terminate();
+        try {
+            sendBroadcast(new terminateBroadcast());
+            terminate();
+            myDiary.setLeiaTerminate(System.currentTimeMillis());
+        }catch (InterruptedException e){}
     }
 }

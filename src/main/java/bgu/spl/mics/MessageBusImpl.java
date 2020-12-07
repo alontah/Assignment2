@@ -66,6 +66,7 @@ public class MessageBusImpl implements MessageBus {
 		}
 		/***
 		 * think if locks / sync are needed.
+		 * 
 		 */
 	}
 
@@ -85,6 +86,7 @@ public class MessageBusImpl implements MessageBus {
 	@Override @SuppressWarnings("unchecked")
 	public <T> void complete(Event<T> e, T result) {
 		e.getFuture().resolve(result);
+		notifyAll();
 	}
 
 	@Override

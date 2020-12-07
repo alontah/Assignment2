@@ -29,7 +29,7 @@ public class Ewoks {
         return instance;
     }
 
-    public synchronized boolean acquireEwok (int serialNum)  {
+    public boolean acquireEwok (int serialNum)  {
         Ewok currentEwok = ewokVector.elementAt(serialNum-1);
         while (!currentEwok.available) {//wait until ewok is available
             try {

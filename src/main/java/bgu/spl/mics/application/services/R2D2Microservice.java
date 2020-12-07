@@ -3,6 +3,7 @@ package bgu.spl.mics.application.services;
 import bgu.spl.mics.*;
 import bgu.spl.mics.application.messages.ShieldEvent;
 import bgu.spl.mics.application.messages.terminateBroadcast;
+import bgu.spl.mics.application.passiveObjects.Diary;
 
 /**
  * R2D2Microservices is in charge of the handling {@link bgu.spl.mics.application.messages.ShieldEvent}.
@@ -19,6 +20,7 @@ public class R2D2Microservice extends MicroService {
     private Class shieldEventClass = ShieldEvent.class;
     private Class terminateBroadcastClass = terminateBroadcast.class;
     private boolean terminate;
+    private Diary myDiary = Diary.getInstance();
 
     public R2D2Microservice(long duration) {
         super("R2D2");
@@ -42,6 +44,7 @@ public class R2D2Microservice extends MicroService {
                     Thread.sleep(duration);
                     result = true;
                     complete((Event)c, result);
+                    myDiary.setR2D2Deactivate(System.currentTimeMillis());
                 }catch (InterruptedException e){}
             }
         });
@@ -50,6 +53,7 @@ public class R2D2Microservice extends MicroService {
             public void call(Broadcast c) {
                 terminate = true;
                 terminate();
+                myDiary.setR2D2Terminate(System.currentTimeMillis());
             }
         });
         while (nextMessage == null && !terminate){
