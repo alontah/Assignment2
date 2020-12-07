@@ -40,7 +40,7 @@ public class Ewoks {
         return true;
     }
 
-    public void releaseEwok (int serialNum){
+    public synchronized void releaseEwok (int serialNum){
         ewokVector.elementAt(serialNum-1).release();
         notifyAll();
     }
