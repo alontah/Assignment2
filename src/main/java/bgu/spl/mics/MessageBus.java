@@ -46,7 +46,7 @@ public interface MessageBus {
      * <p>
      * @param b 	The message to added to the queues.
      */
-    void sendBroadcast(Broadcast b);
+    void sendBroadcast(Broadcast b) throws InterruptedException;
 
     /**
      * Adds the {@link Event} {@code e} to the message queue of one of the

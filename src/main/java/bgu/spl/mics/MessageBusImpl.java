@@ -23,12 +23,9 @@ public class MessageBusImpl implements MessageBus {
 	private static MessageBusImpl instance = null;
 	private ArrayList<Queue<Message>> microServiceQueues;
 	private Hashtable<Class<? extends Event>, ArrayList<Integer>> subscriptionTable;
+	private Hashtable<Class<? extends Broadcast>, LinkedList<Integer>> broadcastTable;
 	private ArrayList<Integer> robinRoundCounters;
-	private final Object leiaLock = new Object();
-	private final Object hanLock = new Object();
-	private final Object C3POLock = new Object();
-	private final Object R2D2Lock = new Object();
-	private final Object landoLock = new Object();
+	private ArrayList<Object> lockArray;
 
 
 
@@ -37,10 +34,13 @@ public class MessageBusImpl implements MessageBus {
 		this.microServiceQueues = new ArrayList<>(5);
 		this.subscriptionTable = new Hashtable<>();
 		this.robinRoundCounters = new ArrayList<>(3); // might change when we add events
+		this.lockArray = new ArrayList<>(5);
+		this.broadcastTable = new Hashtable<>();
 		for(int i=0; i<=2; i++){
 			robinRoundCounters.set(i,0);
 		}
 		for(int i=0; i<5; i++) {
+			lockArray.add(new Object());
 			Queue<Message> tempQueue = null;
 			this.microServiceQueues.add(tempQueue);
 		}
@@ -58,7 +58,7 @@ public class MessageBusImpl implements MessageBus {
 		int queueIndex = findQueue(m);// find proper index
 		ArrayList<Integer> eventList = subscriptionTable.get(type);//find event ArrayList within the map
 		if(eventList == null){//if null create
-			subscriptionTable.put(type, new ArrayList<Integer>());
+			subscriptionTable.put(type, new ArrayList<>());
 			subscribeEvent(type, m);
 		} else {
 			eventList.add(queueIndex);
@@ -70,18 +70,35 @@ public class MessageBusImpl implements MessageBus {
 	}
 
 	@Override
-	public void subscribeBroadcast(Class<? extends Broadcast> type, MicroService m) {
-
+	public synchronized void subscribeBroadcast(Class<? extends Broadcast> type, MicroService m) {
+		int queueIndex = findQueue(m);//find queue index
+		LinkedList<Integer> broadcastList = broadcastTable.get(type);// get broadcast list
+		if(broadcastList == null) {//if null create list
+			broadcastTable.put(type, new LinkedList<>());
+			subscribeBroadcast(type, m);
+		} else {
+			broadcastList.add(queueIndex);//add microService to list
+			notifyAll();
+		}
     }
 
 	@Override @SuppressWarnings("unchecked")
 	public <T> void complete(Event<T> e, T result) {
-
+		e.getFuture().resolve(result);
 	}
 
 	@Override
-	public void sendBroadcast(Broadcast b) {
-		
+	public void sendBroadcast(Broadcast b) throws InterruptedException {
+		while(!broadcastTable.containsKey(b.getClass())){//while list isn't contained wait,
+			wait();
+		}
+		LinkedList<Integer> broadcastList = broadcastTable.get(b.getClass());//get list
+		for(Integer queueIndex: broadcastList) {// go through the list
+			synchronized (getLock(queueIndex)) {//get locks
+				microServiceQueues.get(queueIndex).add(b);
+				notifyAll();
+			}
+		}
 	}
 
 	
@@ -135,7 +152,7 @@ public class MessageBusImpl implements MessageBus {
 		if(m instanceof R2D2Microservice){
 			return 3;
 		}
-		return 4; // lando microservice
+		return 4; // lando microService
 	}
 
 	private <T> int identifyEvent(Event<T> e){
@@ -170,23 +187,7 @@ public class MessageBusImpl implements MessageBus {
 	}
 
 	private Object getLock(int identity){
-		switch (identity){
-			case(0):
-		}
-
-		if(identity == 0){
-			return leiaLock;
-		}
-		if(identity == 1){
-			return hanLock;
-		}
-		if(identity == 2){
-			return C3POLock;
-		}
-		if(identity == 3){
-			return R2D2Lock;
-		}
-		return landoLock;
+		return lockArray.get(identity);
 	}
 
 
