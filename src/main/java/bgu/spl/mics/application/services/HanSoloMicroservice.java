@@ -6,11 +6,8 @@ import bgu.spl.mics.Event;
 import bgu.spl.mics.Message;
 import bgu.spl.mics.MicroService;
 import bgu.spl.mics.application.messages.AttackEvent;
-import bgu.spl.mics.application.messages.ShieldEvent;
-import bgu.spl.mics.application.passiveObjects.Ewok;
 import bgu.spl.mics.application.passiveObjects.Ewoks;
 
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -25,6 +22,7 @@ public class HanSoloMicroservice extends MicroService {
     private Message nextMessage;
     private Class AttackEventClass = AttackEvent.class;
     private boolean result = true;
+    Ewoks myEwoks = Ewoks.getInstance(0);
 
     public HanSoloMicroservice() {
         super("Han");
@@ -37,7 +35,7 @@ public class HanSoloMicroservice extends MicroService {
         subscribeEvent(AttackEventClass, new Callback<Event<?>>() {//subs to attack event
             @Override
             public void call(Event<?> c) {
-                Ewoks myEwoks = Ewoks.getInstance(((AttackEvent)c).sizeOfAttack());
+                //Ewoks myEwoks = Ewoks.getInstance(((AttackEvent)c).sizeOfAttack());
                 List<Integer> attackList = ((AttackEvent)c).getSerials();
                 attackList.sort(Integer::compareTo);
                 for (int i = 0; i< attackList.size(); i++){

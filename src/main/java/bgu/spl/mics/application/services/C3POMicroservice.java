@@ -19,6 +19,7 @@ public class C3POMicroservice extends MicroService {
     private Message nextMessage;
     private Class AttackEventClass = AttackEvent.class;
     private boolean result = true;
+    Ewoks myEwoks = Ewoks.getInstance(0);
 
     public C3POMicroservice() {
         super("C3PO");
@@ -29,7 +30,7 @@ public class C3POMicroservice extends MicroService {
         subscribeEvent(AttackEventClass, new Callback<Event<?>>() {//subs to attack event
             @Override
             public void call(Event<?> c) {
-                Ewoks myEwoks = Ewoks.getInstance(((AttackEvent) c).sizeOfAttack());
+                //Ewoks myEwoks = Ewoks.getInstance(((AttackEvent) c).sizeOfAttack());
                 List<Integer> attackList = ((AttackEvent) c).getSerials();
                 attackList.sort(Integer::compareTo);
                 for (int i = 0; i < attackList.size(); i++) {

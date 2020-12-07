@@ -1,7 +1,6 @@
 package bgu.spl.mics;
 
 import java.util.HashMap;
-import java.util.Queue;
 
 /**
  * The MicroService is an abstract class that any micro-service in the system

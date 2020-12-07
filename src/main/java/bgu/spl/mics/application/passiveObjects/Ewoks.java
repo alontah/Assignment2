@@ -1,7 +1,6 @@
 package bgu.spl.mics.application.passiveObjects;
 
 
-import java.util.List;
 import java.util.Vector;
 
 /**
@@ -38,11 +37,11 @@ public class Ewoks {
             } catch (InterruptedException e){};
         }
         currentEwok.acquire();
-        notifyAll();
         return true;
     }
 
     public void releaseEwok (int serialNum){
         ewokVector.elementAt(serialNum-1).release();
+        notifyAll();
     }
 }

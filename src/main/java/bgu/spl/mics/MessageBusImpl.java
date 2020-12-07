@@ -9,9 +9,10 @@ import bgu.spl.mics.application.services.LeiaMicroservice;
 import bgu.spl.mics.application.services.R2D2Microservice;
 
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicInteger;
+
 
 /**
  * The {@link MessageBusImpl class is the implementation of the MessageBus interface.
@@ -21,26 +22,28 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class MessageBusImpl implements MessageBus {
 	private static MessageBusImpl instance = null;
 	private ArrayList<Queue<Message>> microServiceQueues;
-	private AtomicInteger AttackCounter;
+	private Hashtable<Class<? extends Event>, ArrayList<Integer>> subscriptionTable;
+	private ArrayList<Integer> robinRoundCounters;
+	private final Object leiaLock = new Object();
 	private final Object hanLock = new Object();
 	private final Object C3POLock = new Object();
 	private final Object R2D2Lock = new Object();
 	private final Object landoLock = new Object();
-//	private Queue<Message> leiaQueue;
-//	private Queue<Message> hanQueue;
-//	private Queue<Message> C3POQueue;
-//	private Queue<Message> R2D2Queue;
-//	private Queue<Message> landoQueue;
+
 
 
 
 	private MessageBusImpl(){
 		this.microServiceQueues = new ArrayList<>(5);
+		this.subscriptionTable = new Hashtable<>();
+		this.robinRoundCounters = new ArrayList<>(3); // might change when we add events
+		for(int i=0; i<=2; i++){
+			robinRoundCounters.set(i,0);
+		}
 		for(int i=0; i<5; i++) {
 			Queue<Message> tempQueue = null;
 			this.microServiceQueues.add(tempQueue);
 		}
-		this.AttackCounter = new AtomicInteger(0);
 	}
 
 	public static synchronized MessageBusImpl getInstance(){
@@ -51,19 +54,29 @@ public class MessageBusImpl implements MessageBus {
 	}
 	
 	@Override
-	public <T> void subscribeEvent(Class<? extends Event<T>> type, MicroService m) {
-		//find MicroService queue
-		// initilaize it
+	public synchronized <T> void  subscribeEvent(Class<? extends Event<T>> type, MicroService m) {
+		int queueIndex = findQueue(m);// find proper index
+		ArrayList<Integer> eventList = subscriptionTable.get(type);//find event ArrayList within the map
+		if(eventList == null){//if null create
+			subscriptionTable.put(type, new ArrayList<Integer>());
+			subscribeEvent(type, m);
+		} else {
+			eventList.add(queueIndex);
+			notifyAll();
+		}
+		/***
+		 * think if locks / sync are needed.
+		 */
 	}
 
 	@Override
 	public void subscribeBroadcast(Class<? extends Broadcast> type, MicroService m) {
-		
+
     }
 
 	@Override @SuppressWarnings("unchecked")
 	public <T> void complete(Event<T> e, T result) {
-		
+
 	}
 
 	@Override
@@ -75,17 +88,17 @@ public class MessageBusImpl implements MessageBus {
 	@Override
 	public <T> Future<T> sendEvent(Event<T> e) {
 		int eventIdentity = identifyEvent(e);
-		addEvent(e, eventIdentity);
-		// while future(!isDone()){ wait()} need to make sure events notifyall when future isDone (complete)
-		//return future
-        return null;
+		try {
+			addEvent(e, eventIdentity); // inserts the event to the proper Q
+		} catch (InterruptedException I){}
+		Future eventFuture = e.getFuture();
+        return eventFuture;
 	}
 
 	@Override
 	public void register(MicroService m) {
 		int microServiceIndex = findQueue(m);
 		microServiceQueues.set(microServiceIndex, new LinkedList<Message>());
-		m.initialize();
 	}
 
 	@Override
@@ -96,15 +109,15 @@ public class MessageBusImpl implements MessageBus {
 
 	@Override
 	public Message awaitMessage(MicroService m) throws InterruptedException {
-		Message event = null;
-		int identity = findQueue(m);//find currect queue
+		Message event;
+		int identity = findQueue(m);//find correct queue
 		while(microServiceQueues.get(identity).isEmpty()) {//waiting for leia to add to queue
 			wait();
 		}
 		synchronized (getLock(identity)){//locking queue so leia doesn't add while he removes
 			event = microServiceQueues.get(identity).remove();
 		}
-		notifyAll(); // might NOT be needed...
+//		notifyAll(); // might NOT be needed...
 		return event;
 	}
 
@@ -126,7 +139,7 @@ public class MessageBusImpl implements MessageBus {
 	}
 
 	private <T> int identifyEvent(Event<T> e){
-		if(e instanceof AttackEvent){
+		if(e instanceof  AttackEvent){
 			return 0;
 		}
 		if(e instanceof ShieldEvent){
@@ -138,34 +151,32 @@ public class MessageBusImpl implements MessageBus {
 	}
 
 
-	private <T> void addEvent(Event<T> e, int identity){
-		if(identity == 0){
-			if(AttackCounter.get()%2 == 0){
-				synchronized (hanLock){
-					microServiceQueues.get(1).add(e);
-					int expected = AttackCounter.get()+1;
-					AttackCounter.compareAndSet(expected,AttackCounter.get()+1);
-				}
-			} else {
-				synchronized (C3POLock){
-					microServiceQueues.get(2).add(e);
-					int expected = AttackCounter.get()+1;
-					AttackCounter.compareAndSet(expected,AttackCounter.get()+1);
-				}
-			}
-		} else if(identity == 1){
-			synchronized (R2D2Lock) {
-				microServiceQueues.get(3).add(e);//adds shield to r2d2
-			}
-		} else if(identity == 2){
-			synchronized (landoLock) {
-				microServiceQueues.get(4).add(e);//adds destroyer to lando
-			}
+	private <T> void addEvent(Event<T> e, int identity) throws InterruptedException {
+		while(!subscriptionTable.containsKey(e.getClass())) {//get event list from map
+			wait();//while map doesn't contain list wait
+		}
+
+		ArrayList<Integer> temp = subscriptionTable.get(e.getClass());//send event to correct one with count array and modulu
+		int size = temp.size();
+		int queueCounter = robinRoundCounters.get(identity);
+		int queue = temp.get(queueCounter%size); //gets next queue for this type of message MIGHT NEED SYNC CUS OF SIZE!!!!!!
+		Queue<Message> tempMicroQueue = microServiceQueues.get(queue);
+
+		synchronized (getLock(queue)) { // returns correct lock
+			tempMicroQueue.add(e); // adds the event to the correct Queue
+			robinRoundCounters.set(identity, queueCounter + 1);
 		}
 		notifyAll();//so events will try to check their queues
 	}
 
 	private Object getLock(int identity){
+		switch (identity){
+			case(0):
+		}
+
+		if(identity == 0){
+			return leiaLock;
+		}
 		if(identity == 1){
 			return hanLock;
 		}
@@ -177,6 +188,7 @@ public class MessageBusImpl implements MessageBus {
 		}
 		return landoLock;
 	}
+
 
 
 
