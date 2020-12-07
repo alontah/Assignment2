@@ -2,6 +2,7 @@ package bgu.spl.mics.application.services;
 
 import bgu.spl.mics.*;
 import bgu.spl.mics.application.messages.ShieldEvent;
+import bgu.spl.mics.application.messages.terminateBroadcast;
 
 /**
  * R2D2Microservices is in charge of the handling {@link bgu.spl.mics.application.messages.ShieldEvent}.
@@ -16,12 +17,15 @@ public class R2D2Microservice extends MicroService {
     private Message nextMessage;
     private boolean result;// need to figure out what the results are
     private Class shieldEventClass = ShieldEvent.class;
+    private Class terminateBroadcastClass = terminateBroadcast.class;
+    private boolean terminate;
 
     public R2D2Microservice(long duration) {
         super("R2D2");
         this.duration = duration;
         nextMessage = null;
         result = false;
+        terminate = false;
     }
 
     /**
@@ -36,16 +40,21 @@ public class R2D2Microservice extends MicroService {
             public void call(Event<?> c) {
                 try {
                     Thread.sleep(duration);
+                    result = true;
+                    complete((Event)c, result);
                 }catch (InterruptedException e){}
             }
         });
-        while (nextMessage == null){
+        subscribeBroadcast(terminateBroadcastClass, new Callback<Broadcast>() {//need to add diary actions
+            @Override
+            public void call(Broadcast c) {
+                terminate = true;
+                terminate();
+            }
+        });
+        while (nextMessage == null && !terminate){
             nextMessage = getNextMessage();// wait for new message to come
             getCallback(nextMessage.getClass()).call(nextMessage);//get the callback
-            if (nextMessage instanceof ShieldEvent){
-                result = true;
-                complete((Event) nextMessage, result);
-            }
             nextMessage = null;//reset
         }
     }

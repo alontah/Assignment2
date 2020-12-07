@@ -7,10 +7,10 @@ import java.util.List;
 
 public class AttackEvent implements Event<Boolean> {
     private Future myFuture;
-    private long duration;
+    private int duration;
     private List<Integer> serials;
 
-    public AttackEvent(long duration, List<Integer> serials){
+    public AttackEvent(int duration, List<Integer> serials){
         this.myFuture = new Future();
         this.duration = duration;
         this.serials=serials;
@@ -20,13 +20,10 @@ public class AttackEvent implements Event<Boolean> {
         return this.myFuture;
     }
 
-    public int sizeOfAttack(){
-        return this.serials.size();
-    }
     public List<Integer> getSerials(){
         return this.serials;
     }
-    public long getDuration(){
+    public int getDuration(){
         return this.duration;
     }
 }

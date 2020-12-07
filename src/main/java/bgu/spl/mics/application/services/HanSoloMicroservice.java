@@ -1,11 +1,9 @@
 package bgu.spl.mics.application.services;
 
 
-import bgu.spl.mics.Callback;
-import bgu.spl.mics.Event;
-import bgu.spl.mics.Message;
-import bgu.spl.mics.MicroService;
+import bgu.spl.mics.*;
 import bgu.spl.mics.application.messages.AttackEvent;
+import bgu.spl.mics.application.messages.terminateBroadcast;
 import bgu.spl.mics.application.passiveObjects.Ewoks;
 
 import java.util.List;
@@ -22,7 +20,9 @@ public class HanSoloMicroservice extends MicroService {
     private Message nextMessage;
     private Class AttackEventClass = AttackEvent.class;
     private boolean result = true;
-    Ewoks myEwoks = Ewoks.getInstance(0);
+    private Ewoks myEwoks = Ewoks.getInstance(0);
+    private Class terminateBroadcastClass = terminateBroadcast.class;
+    private boolean terminate;
 
     public HanSoloMicroservice() {
         super("Han");
@@ -35,7 +35,6 @@ public class HanSoloMicroservice extends MicroService {
         subscribeEvent(AttackEventClass, new Callback<Event<?>>() {//subs to attack event
             @Override
             public void call(Event<?> c) {
-                //Ewoks myEwoks = Ewoks.getInstance(((AttackEvent)c).sizeOfAttack());
                 List<Integer> attackList = ((AttackEvent)c).getSerials();
                 attackList.sort(Integer::compareTo);
                 for (int i = 0; i< attackList.size(); i++){
@@ -46,16 +45,21 @@ public class HanSoloMicroservice extends MicroService {
                     for (int i = 0; i< attackList.size(); i++){
                         myEwoks.releaseEwok(attackList.get(i));
                     }
+                    result = true;
+                    complete((Event) c, result);
                 }catch (InterruptedException e){}
             }
         });
-        while (nextMessage == null){//gets next message
+        subscribeBroadcast(terminateBroadcastClass, new Callback<Broadcast>() {//need to add diary actions
+            @Override
+            public void call(Broadcast c) {
+                terminate = true;
+                terminate();
+            }
+        });
+        while (nextMessage == null&& !terminate){//gets next message
             nextMessage = getNextMessage();// wait for new message to come
             getCallback(nextMessage.getClass()).call(nextMessage);//get the callback
-            if (nextMessage instanceof AttackEvent){
-                result = true;
-                complete((Event) nextMessage, result);
-            }
             nextMessage = null;//reset
         }
     }
