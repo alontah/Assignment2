@@ -1,11 +1,9 @@
 package bgu.spl.mics.application.services;
 
-import bgu.spl.mics.Callback;
-import bgu.spl.mics.Event;
-import bgu.spl.mics.Message;
-import bgu.spl.mics.MicroService;
+import bgu.spl.mics.*;
 import bgu.spl.mics.application.messages.DestroyerEvent;
 import bgu.spl.mics.application.messages.ShieldEvent;
+import bgu.spl.mics.application.messages.terminateBroadcast;
 
 /**
  * LandoMicroservice
@@ -17,6 +15,8 @@ public class LandoMicroservice  extends MicroService {
     private Message nextMessage;
     private boolean result;// need to figure out what the results are
     Class destroyerEventClass = DestroyerEvent.class;
+    private Class terminateBroadcastClass = terminateBroadcast.class;
+    private boolean terminate;
 
     public LandoMicroservice(long duration) {
         super("Lando");
@@ -37,16 +37,21 @@ public class LandoMicroservice  extends MicroService {
             public void call(Event<?> c) {
                 try {
                     Thread.sleep(duration);
+                    result = true;
+                    complete((Event) c, result);
                 }catch (InterruptedException e){}
             }
         });
-        while (nextMessage == null){
+        subscribeBroadcast(terminateBroadcastClass, new Callback<Broadcast>() {//need to add diary actions
+            @Override
+            public void call(Broadcast c) {
+                terminate = true;
+                terminate();
+            }
+        });
+        while (nextMessage == null&& !terminate){
             nextMessage = getNextMessage();
             getCallback(nextMessage.getClass()).call(nextMessage);
-            if (nextMessage instanceof DestroyerEvent){
-                result = true;
-                complete((Event) nextMessage, result);
-            }
             nextMessage = null;//reset
         }
     }
