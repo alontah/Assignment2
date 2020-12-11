@@ -12,36 +12,46 @@ import java.util.Vector;
  * You can add ONLY private methods and fields to this class.
  */
 public class Ewoks {
-    private static Ewoks instance = null;
+
+    private static int ewokNum;
     private Vector<Ewok> ewokVector;
 
-    private Ewoks(int numOfEwoks){
+    private static class singletonHolder{
+        private static int numOfEwoks;
+        private static Ewoks instance = new Ewoks() ;
+    }
+
+    private Ewoks(){
         this.ewokVector = new Vector<>();
-        for(int i =1;i<=numOfEwoks;i++){
+        for(int i =1;i<=ewokNum;i++){
             ewokVector.add(new Ewok(i));
         }
     }
 
-    public static synchronized Ewoks getInstance(int numOfEwoks){
-        if(instance==null) {
-            instance = new Ewoks(numOfEwoks);
-        }
-        return instance;
+    public static Ewoks getInstance(int numOfEwoks){
+        ewokNum = numOfEwoks;
+        return singletonHolder.instance;
     }
 
-    public boolean acquireEwok (int serialNum)  {
-        Ewok currentEwok = ewokVector.elementAt(serialNum-1);
-        while (!currentEwok.available) {//wait until ewok is available
-            try {
-                wait();
-            } catch (InterruptedException e){};
+    public void acquireEwok (int serialNum) {
+        Ewok currentEwok = ewokVector.elementAt(serialNum - 1);
+        synchronized (currentEwok) {
+            while (!currentEwok.available) {
+                try {
+                    currentEwok.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            currentEwok.acquire();
         }
-        currentEwok.acquire();
-        return true;
     }
 
-    public synchronized void releaseEwok (int serialNum){
-        ewokVector.elementAt(serialNum-1).release();
-        notifyAll();
+    public  void releaseEwok (int serialNum){
+        Ewok currentEwok = ewokVector.elementAt(serialNum - 1);
+        currentEwok.release();
+        synchronized (currentEwok) {
+            currentEwok.notifyAll();
+        }
     }
 }

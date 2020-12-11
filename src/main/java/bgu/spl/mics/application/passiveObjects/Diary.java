@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Do not add to this class nothing but a single constructor, getters and setters.
  */
 public class Diary {
-    private static Diary instance = null;
+
     private AtomicInteger totalAttack;
     private long HanSoloFinish;
     private long C3POFinish;
@@ -21,15 +21,16 @@ public class Diary {
     private long R2D2Terminate;
     private long LandoTerminate;
 
-    private Diary(){
-        this.totalAttack  = new AtomicInteger(0);
+    private static class SingletonHolder{
+        private static Diary instance = new Diary();
     }
 
-    public synchronized static Diary getInstance(){
-        if (instance==null){
-            instance = new Diary();
-        }
-        return instance;
+    private Diary(){
+        totalAttack = new AtomicInteger(0);
+    }
+
+    public static Diary getInstance(){
+        return SingletonHolder.instance;
     }
 
     public void raiseAttackBy1(){
@@ -68,41 +69,5 @@ public class Diary {
 
     public void setLandoTerminate(long landoTerminate) {
         LandoTerminate = landoTerminate;
-    }
-
-    public AtomicInteger getTotalAttack() {
-        return totalAttack;
-    }
-
-    public long getHanSoloFinish() {
-        return HanSoloFinish;
-    }
-
-    public long getC3POFinish() {
-        return C3POFinish;
-    }
-
-    public long getR2D2Deactivate() {
-        return R2D2Deactivate;
-    }
-
-    public long getLeiaTerminate() {
-        return LeiaTerminate;
-    }
-
-    public long getHanSoloTerminate() {
-        return HanSoloTerminate;
-    }
-
-    public long getC3POTerminate() {
-        return C3POTerminate;
-    }
-
-    public long getR2D2Terminate() {
-        return R2D2Terminate;
-    }
-
-    public long getLandoTerminate() {
-        return LandoTerminate;
     }
 }

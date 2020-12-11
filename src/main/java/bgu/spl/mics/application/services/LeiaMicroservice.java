@@ -7,9 +7,9 @@ import bgu.spl.mics.application.messages.DestroyerEvent;
 import bgu.spl.mics.application.messages.ShieldEvent;
 import bgu.spl.mics.application.messages.terminateBroadcast;
 import bgu.spl.mics.application.passiveObjects.Attack;
-import bgu.spl.mics.application.passiveObjects.Diary;
 
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * LeiaMicroservices Initialized with Attack objects, and sends them as  {@link AttackEvent}.
@@ -22,7 +22,7 @@ import java.util.Vector;
 public class LeiaMicroservice extends MicroService {
 	private Attack[] attacks;
 	private Vector<Future> futures;
-    private Diary myDiary = Diary.getInstance();
+	private AtomicInteger counter = new AtomicInteger(0);
 
     public LeiaMicroservice(Attack[] attacks) {
         super("Leia");
@@ -32,39 +32,32 @@ public class LeiaMicroservice extends MicroService {
 
     @Override
     protected void initialize() {
-        for(int i = 0; i< attacks.length;i++){//send the attack events to the message bus
-            AttackEvent nextAttack = new AttackEvent(attacks[i].getDuration(),attacks[i].getSerials());
+        for (Attack myAttack: attacks)
+        {
+            AttackEvent nextAttack = new AttackEvent(myAttack.getDuration(),myAttack.getSerials());
             Future nextFuture = sendEvent(nextAttack);
-            futures.set(i, nextFuture);//save vector of future objects
+            futures.add(nextFuture);//save vector of future objects
         }
-        boolean isFinish = false;
-        while (!isFinish){//wait until all future objects are completed
-            try {
-                for (int i = 0; i<futures.size();i++){
-                    if(!(futures.get(i).isDone()))
-                        wait();
-                }
-                isFinish = true;
-            }catch (InterruptedException e){}
+        for (Future curr : futures){//wait for all attacks to be  completed
+            curr.get();//get() waits for current future to be done
         }
+
         ShieldEvent shield = new ShieldEvent();
         Future shieldFuture = sendEvent(shield);//send deactivation event to r2d2
-        while (!shieldFuture.isDone()){//wait for the result of shield event
-            try {
-                wait();
-            }catch (InterruptedException e) {}
-        }
+        shieldFuture.get();//wait for future to finish
+
         DestroyerEvent destroy = new DestroyerEvent();
         Future destroyFuture = sendEvent(destroy);//send destroyer event to lando
-        while (!destroyFuture.isDone()){//wait for the result of destroyer event
-            try {
-                wait();
-            }catch (InterruptedException e) {}
-        }
+        destroyFuture.get(); //wait for future to finish
+
         try {
             sendBroadcast(new terminateBroadcast());
             terminate();
             myDiary.setLeiaTerminate(System.currentTimeMillis());
-        }catch (InterruptedException e){}
+        }catch (InterruptedException e){
+            e.printStackTrace();
+        }
+
+        System.out.println("Leia Done");
     }
 }

@@ -9,7 +9,6 @@ import bgu.spl.mics.application.services.LeiaMicroservice;
 import bgu.spl.mics.application.services.R2D2Microservice;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -21,12 +20,17 @@ import java.util.concurrent.LinkedBlockingQueue;
  * Only private fields and methods can be added to this class.
  */
 public class MessageBusImpl implements MessageBus {
-	private static MessageBusImpl instance = null;
+	private Class AttackEventClass = AttackEvent.class;
+	private Class shieldEventClass = ShieldEvent.class;
+	private Class destroyerEventClass = DestroyerEvent.class;
 	private ArrayList<BlockingQueue<Message>> microServiceQueues;
 	private ConcurrentHashMap<Class<? extends Event>, ArrayList<Integer>> subscriptionMap;
-	private ConcurrentHashMap<Class<? extends Broadcast>, LinkedList<Integer>> subscriptionBroadcastMap;
+	private ConcurrentHashMap<Class<? extends Broadcast>, ArrayList<Integer>> subscriptionBroadcastMap;
 	private ArrayList<Integer> robinRoundCounters;
 	private ArrayList<Object> lockArray;
+	private static class SingletonHolder{
+		private static MessageBusImpl instance = new MessageBusImpl();
+	}
 
 
 
@@ -43,77 +47,75 @@ public class MessageBusImpl implements MessageBus {
 			this.microServiceQueues.add(tempQueue);
 		}
 		for(int i=0; i<=2; i++){
-			robinRoundCounters.set(i,0);
+			robinRoundCounters.add(0);
 		}
 	}
 
-	public static synchronized MessageBusImpl getInstance(){
-		if(instance==null) {
-			instance = new MessageBusImpl();
-		}
-		return instance;
+	public static MessageBusImpl getInstance(){
+		return SingletonHolder.instance;
 	}
 	
 	@Override
 	public  <T> void  subscribeEvent(Class<? extends Event<T>> type, MicroService m) {
-		int queueIndex = findQueue(m);// find proper index
-		ArrayList<Integer> eventList = subscriptionMap.get(type);//find event ArrayList within the map
-		if(eventList == null){//if null create
-			subscriptionMap.put(type, new ArrayList<>());
-			subscribeEvent(type, m);
-		} else {
-			// might need lock for list...
+		Object typeLock = getLock(identifyEventByType(type));
+		synchronized (typeLock) {
+			if (!subscriptionMap.containsKey(type)) {
+				subscriptionMap.put(type, new ArrayList<>());
+			}
+			int queueIndex = findQueue(m);// find proper index
+			ArrayList<Integer> eventList = subscriptionMap.get(type);
 			eventList.add(queueIndex);
-			//notifyAll();
+			typeLock.notifyAll(); // ask YEHIEL
 		}
-		/***
-		 * think if locks / sync are needed.
-		 * 
-		 */
 	}
 
 	@Override
-	public void subscribeBroadcast(Class<? extends Broadcast> type, MicroService m) {
-		int queueIndex = findQueue(m);//find queue index
-		LinkedList<Integer> broadcastList = subscriptionBroadcastMap.get(type);// get broadcast list
-		if(broadcastList == null) {//if null create list
-			subscriptionBroadcastMap.put(type, new LinkedList<>());
-			subscribeBroadcast(type, m);
-		} else {
+	public  void subscribeBroadcast(Class<? extends Broadcast> type, MicroService m) {
+		Object subLock = getLock(4);
+		synchronized (subLock){
+			if (!subscriptionBroadcastMap.containsKey(type)) {
+				subscriptionBroadcastMap.put(type, new ArrayList<>());
+			}
+			int queueIndex = findQueue(m);//find queue index
+			ArrayList<Integer> broadcastList = subscriptionBroadcastMap.get(type);
 			broadcastList.add(queueIndex);//add microService to list
-			//notifyAll();
+
+			subLock.notifyAll(); // ask YEHIEL
+
 		}
     }
 
 	@Override @SuppressWarnings("unchecked")
 	public <T> void complete(Event<T> e, T result) {
 		e.getFuture().resolve(result);
-		notifyAll();
 	}
 
 	@Override
-	public void sendBroadcast(Broadcast b) throws InterruptedException {
-		while(!subscriptionBroadcastMap.containsKey(b.getClass())){//while list isn't contained wait,
-			wait();
-		}
-		LinkedList<Integer> broadcastList = subscriptionBroadcastMap.get(b.getClass());//get list
-		for(Integer queueIndex: broadcastList) {// go through the list
-			//synchronized (getLock(queueIndex)) {//get locks
-				microServiceQueues.get(queueIndex).add(b);
-				//notifyAll();
-			//}
-		}
-	}
+	public void sendBroadcast(Broadcast b){
+        if (subscriptionBroadcastMap.containsKey(b.getClass())) { // make sure all microservices subscribe first thing!!!!
+            ArrayList<Integer> broadcastList = subscriptionBroadcastMap.get(b.getClass());//get list
+            for (Integer queueIndex : broadcastList) {// go through the list
+                microServiceQueues.get(queueIndex).add(b);
+            }
+        }
+    }
 
 	
 	@Override
 	public <T> Future<T> sendEvent(Event<T> e) {
+		Object lock = getLock(identifyEvent(e));
+		while(!subscriptionMap.containsKey(e.getClass())) {
+			try {
+				synchronized (lock) {
+					lock.wait();
+				}
+			} catch (InterruptedException I) {
+				I.printStackTrace();
+			}
+		}
 		int eventIdentity = identifyEvent(e);
-		try {
-			addEvent(e, eventIdentity); // inserts the event to the proper Q
-		} catch (InterruptedException I){}
-		Future eventFuture = e.getFuture();
-        return eventFuture;
+		addEvent(e, eventIdentity);
+        return e.getFuture();
 	}
 
 	@Override
@@ -129,21 +131,16 @@ public class MessageBusImpl implements MessageBus {
 	}
 
 	@Override
-	public Message awaitMessage(MicroService m) throws InterruptedException {
+	public Message awaitMessage(MicroService m){
 		Message event = null;
 		int identity = findQueue(m);//find correct queue
 		try {
 			while(event == null) {
 				event = microServiceQueues.get(identity).take();
 			}
-		} catch (InterruptedException ex){}
-//		while(microServiceQueues.get(identity).isEmpty()) {//waiting for leia to add to queue
-//			wait();
-//		}
-//		synchronized (getLock(identity)){//locking queue so leia doesn't add while he removes
-//			event = microServiceQueues.get(identity).remove();
-//		}
-//		notifyAll(); // might NOT be needed...
+		} catch (InterruptedException ex){
+			ex.printStackTrace();
+		}
 		return event;
 	}
 
@@ -176,23 +173,28 @@ public class MessageBusImpl implements MessageBus {
 		return -1; // might add events later
 	}
 
-
-	private <T> void addEvent(Event<T> e, int identity) throws InterruptedException {
-		while(!subscriptionMap.containsKey(e.getClass())) { //waiting for someone to subscribe  to event type
-			wait();
+	private <T> int identifyEventByType(Class<? extends Event<T>> type){
+		if(type.equals(AttackEventClass)){
+			return 0;
 		}
+		if(type.equals(shieldEventClass)){
+			return 1;
+		}if(type.equals(destroyerEventClass)){
+			return 2;
+		}
+		return -1; // might add events later
+	}
 
+
+	private <T> void addEvent(Event<T> e, int identity) {
 		ArrayList<Integer> temp = subscriptionMap.get(e.getClass());//getting the subscription list
-		int size = temp.size();
 		int queueCounter = robinRoundCounters.get(identity);
-		int queue = temp.get(queueCounter%size); //gets next queue for this type of message MIGHT NEED SYNC CUS OF SIZE!!!!!!
-		BlockingQueue<Message> tempMicroQueue = microServiceQueues.get(queue);
+		int size = temp.size();
+		int queue = temp.get(queueCounter % size); //gets next queue for this type of message MIGHT NEED SYNC CUS OF SIZE!!!!!!
 
-//		synchronized (getLock(queue)) { // returns correct lock
-			tempMicroQueue.add(e); // adds the event to the correct Queue
-			robinRoundCounters.set(identity, queueCounter + 1);
-//		}
-//		notifyAll();//so events will try to check their queues
+		BlockingQueue<Message> tempMicroQueue = microServiceQueues.get(queue);
+		tempMicroQueue.add(e); // adds the event to the correct Queue
+		robinRoundCounters.set(identity, queueCounter + 1);
 	}
 
 	private Object getLock(int identity){

@@ -1,16 +1,19 @@
 package bgu.spl.mics.application;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.*;
-
 import bgu.spl.mics.application.passiveObjects.Attack;
+import bgu.spl.mics.application.passiveObjects.Ewoks;
 import bgu.spl.mics.application.services.*;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Vector;
 
 /** This is the Main class of the application. You should parse the input file,
  * create the different components of the application, and run the system.
@@ -19,7 +22,7 @@ import org.json.simple.parser.ParseException;
 public class Main {
 	public static void main(String[] args) {
 		JSONParser jsonParser = new JSONParser();
-		try (FileReader reader = new FileReader("C:\\Users\\itayo\\Desktop\\input.json");)
+		try (FileReader reader = new FileReader("C:\\Users\\alont\\Desktop\\input.json"))
 		{
 			//Read JSON file
 			Object obj = jsonParser.parse(reader);
@@ -50,6 +53,9 @@ public class Main {
 			myInput.setEwoks(numOfEwoks.intValue());
 
 
+			Ewoks.getInstance(numOfEwoks.intValue());
+
+
 
 
 		} catch (FileNotFoundException e) {
@@ -59,6 +65,7 @@ public class Main {
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
+
 
 		//initialize Threads
 		input myInput = input.getInstance();
@@ -78,6 +85,8 @@ public class Main {
 //			List<Integer> l = arr[i].getSerials();
 //			System.out.println(arr[i].getSerials().get(0) instanceof Integer);
 //		}
+
+
 
 
 	}

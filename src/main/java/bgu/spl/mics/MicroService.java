@@ -1,5 +1,7 @@
 package bgu.spl.mics;
 
+import bgu.spl.mics.application.passiveObjects.Diary;
+
 import java.util.HashMap;
 
 /**
@@ -24,6 +26,7 @@ public abstract class MicroService implements Runnable {
     private String name;
     private MessageBusImpl messageBus;
     private HashMap<Class,Callback> myMap;
+    protected Diary myDiary;
 
     /**
      * @param name the micro-service name (used mainly for debugging purposes -
@@ -33,6 +36,7 @@ public abstract class MicroService implements Runnable {
     	this.name = name;
     	this.messageBus = MessageBusImpl.getInstance();
     	this.myMap = new HashMap<Class, Callback>();
+    	this.myDiary = Diary.getInstance();
     }
 
     /**
@@ -158,11 +162,7 @@ public abstract class MicroService implements Runnable {
     }
 
     protected Message getNextMessage()  {
-        try {
-            return this.messageBus.awaitMessage(this);
-        }
-        catch (InterruptedException e){}
-        return null;
+        return this.messageBus.awaitMessage(this);
     }
 
     protected Callback getCallback(Class type){

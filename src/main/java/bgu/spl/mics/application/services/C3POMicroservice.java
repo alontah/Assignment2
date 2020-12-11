@@ -3,7 +3,6 @@ package bgu.spl.mics.application.services;
 import bgu.spl.mics.*;
 import bgu.spl.mics.application.messages.AttackEvent;
 import bgu.spl.mics.application.messages.terminateBroadcast;
-import bgu.spl.mics.application.passiveObjects.Diary;
 import bgu.spl.mics.application.passiveObjects.Ewoks;
 
 import java.util.List;
@@ -20,53 +19,52 @@ import java.util.List;
 public class C3POMicroservice extends MicroService {
     private Message nextMessage;
     private Class AttackEventClass = AttackEvent.class;
-    private boolean result = true;
     private Ewoks myEwoks = Ewoks.getInstance(0);
     private Class terminateBroadcastClass = terminateBroadcast.class;
     private boolean terminate;
-    private Diary myDiary = Diary.getInstance();
 
     public C3POMicroservice() {
         super("C3PO");
         nextMessage = null;
-        result = false;
+        terminate = false;
     }
 
     @Override
     protected void initialize() {
-        subscribeEvent(AttackEventClass, new Callback<Event<?>>() {//subs to attack event
-            @Override
-            public void call(Event<?> c) {
-                List<Integer> attackList = ((AttackEvent) c).getSerials();
-                attackList.sort(Integer::compareTo);
-                for (int i = 0; i < attackList.size(); i++) {
-                    myEwoks.acquireEwok(attackList.get(i));
+        subscribeEvent(AttackEventClass,c-> {//subs to attack event
+            List<Integer> attackList = ((AttackEvent) c).getSerials();
+            attackList.sort(Integer::compareTo);
+            for (int i = 0; i < attackList.size(); i++) {
+                myEwoks.acquireEwok(attackList.get(i));
+            }
+            try {
+                Thread.sleep(((AttackEvent) c).getDuration());
+                for (int i = 0; i< attackList.size(); i++) {
+                    myEwoks.releaseEwok(attackList.get(i));
                 }
-                try {
-                    Thread.sleep(((AttackEvent) c).getDuration());
-                    for (int i = 0; i< attackList.size(); i++) {
-                        myEwoks.releaseEwok(attackList.get(i));
-                    }
-                    result = true;
-                    complete((Event) c, result);
-                    myDiary.raiseAttackBy1();
-                    myDiary.setC3POFinish(System.currentTimeMillis());
-                } catch (InterruptedException e) { }
+                complete((Event) c, true);
+                    System.out.println("C3P0 Done attack");
+
+                myDiary.raiseAttackBy1();
+                myDiary.setC3POFinish(System.currentTimeMillis());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         });
-        subscribeBroadcast(terminateBroadcastClass, new Callback<Broadcast>() {//need to add diary actions
-            @Override
-            public void call(Broadcast c) {
-                terminate = true;
-                terminate();
-                myDiary.setC3POTerminate(System.currentTimeMillis());
-            }
+
+        subscribeBroadcast(terminateBroadcastClass, c-> {//need to add diary actions
+            terminate = true;
+            terminate();
+            myDiary.setC3POTerminate(System.currentTimeMillis());
         });
+
         while (nextMessage == null&&!terminate) {//gets next message
             nextMessage = getNextMessage();// wait for new message to come
             getCallback(nextMessage.getClass()).call(nextMessage);//get the callback
             nextMessage = null;//reset
         }
+
+        System.out.println("C3P0 Done");
     }
 }
 
