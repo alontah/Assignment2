@@ -46,6 +46,7 @@ public class LandoMicroservice  extends MicroService {
             getCallback(nextMessage.getClass()).call(nextMessage);
             nextMessage = null;//reset
         }
+
         System.out.println("Lando Done");
     }
 }

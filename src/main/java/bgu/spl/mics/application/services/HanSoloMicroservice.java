@@ -63,6 +63,7 @@ public class HanSoloMicroservice extends MicroService {
             getCallback(nextMessage.getClass()).call(nextMessage);//get the callback
             nextMessage = null;//reset
         }
+
         System.out.println("han Done");
     }
 }

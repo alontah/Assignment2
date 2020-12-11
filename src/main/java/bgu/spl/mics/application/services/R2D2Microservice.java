@@ -52,6 +52,7 @@ public class R2D2Microservice extends MicroService {
             getCallback(nextMessage.getClass()).call(nextMessage);//get the callback
             nextMessage = null;//reset
         }
+
         System.out.println("R2D2 Done");
     }
 

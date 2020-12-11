@@ -28,6 +28,8 @@ public abstract class MicroService implements Runnable {
     private HashMap<Class,Callback> myMap;
     protected Diary myDiary;
 
+
+
     /**
      * @param name the micro-service name (used mainly for debugging purposes -
      *             does not have to be unique)
@@ -159,6 +161,7 @@ public abstract class MicroService implements Runnable {
     public final void run() {
     	this.messageBus.register(this);
     	this.initialize();
+    	myDiary.raiseThreadFinishCounterBy1();
     }
 
     protected Message getNextMessage()  {
