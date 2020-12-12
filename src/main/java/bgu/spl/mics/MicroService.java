@@ -37,7 +37,7 @@ public abstract class MicroService implements Runnable {
     public MicroService(String name) {
     	this.name = name;
     	this.messageBus = MessageBusImpl.getInstance();
-    	this.myMap = new HashMap<Class, Callback>();
+    	this.myMap = new HashMap<>();
     	this.myDiary = Diary.getInstance();
     }
 
@@ -161,7 +161,7 @@ public abstract class MicroService implements Runnable {
     public final void run() {
     	this.messageBus.register(this);
     	this.initialize();
-    	myDiary.raiseThreadFinishCounterBy1();
+    	myDiary.raiseThreadFinishCounterBy1();//update the number of finished threads
     }
 
     protected Message getNextMessage()  {

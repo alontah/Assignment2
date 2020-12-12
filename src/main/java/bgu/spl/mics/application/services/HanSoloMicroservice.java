@@ -35,16 +35,15 @@ public class HanSoloMicroservice extends MicroService {
         subscribeEvent(AttackEventClass, c->{
             List<Integer> attackList = ((AttackEvent)c).getSerials();
             attackList.sort(Integer::compareTo);
-            for (int i = 0; i< attackList.size(); i++) {
-                myEwoks.acquireEwok(attackList.get(i));
+            for (Integer serial: attackList){
+                myEwoks.acquireEwok(serial);
             }
             try {
                 Thread.sleep(((AttackEvent) c).getDuration());
-                for (int i = 0; i< attackList.size(); i++){
-                    myEwoks.releaseEwok(attackList.get(i));
+                for (Integer serial: attackList){
+                    myEwoks.releaseEwok(serial);
                 }
                 complete((Event) c, true);
-                    System.out.println("Han Done attack");
                 myDiary.raiseAttackBy1();
                 myDiary.setHanSoloFinish(System.currentTimeMillis());
             }catch (InterruptedException e){
@@ -52,18 +51,17 @@ public class HanSoloMicroservice extends MicroService {
             }
 
             });
-        subscribeBroadcast(terminateBroadcastClass, c-> {//need to add diary actions
+        subscribeBroadcast(terminateBroadcastClass, c-> {
             terminate = true;
             terminate();
             myDiary.setHanSoloTerminate(System.currentTimeMillis());
         });
 
-        while (nextMessage == null&& !terminate){//gets next message
-            nextMessage = getNextMessage();// wait for new message to come
-            getCallback(nextMessage.getClass()).call(nextMessage);//get the callback
-            nextMessage = null;//reset
+        while (nextMessage == null&& !terminate){
+            nextMessage = getNextMessage();
+            getCallback(nextMessage.getClass()).call(nextMessage);
+            nextMessage = null;
         }
 
-        System.out.println("han Done");
     }
 }

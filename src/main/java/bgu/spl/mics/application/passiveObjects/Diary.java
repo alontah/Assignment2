@@ -1,6 +1,5 @@
 package bgu.spl.mics.application.passiveObjects;
 
-
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -11,9 +10,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Do not add to this class nothing but a single constructor, getters and setters.
  */
 public class Diary {
-    private final Object lock = new Object();
+
     private AtomicInteger threadFinishCounter;
     private AtomicInteger totalAttack;
+    private final AtomicBoolean isFinished;
     private long HanSoloFinish;
     private long C3POFinish;
     private long R2D2Deactivate;
@@ -22,7 +22,6 @@ public class Diary {
     private long C3POTerminate;
     private long R2D2Terminate;
     private long LandoTerminate;
-    private AtomicBoolean isFinished;
 
     private static class SingletonHolder{
         private static Diary instance = new Diary();
@@ -43,7 +42,7 @@ public class Diary {
         do{
             currThreadsFinished = threadFinishCounter.intValue();
         }while (!threadFinishCounter.compareAndSet(currThreadsFinished,currThreadsFinished+1));
-        isFinished();
+        isFinished();//check if all threads finished
     }
 
     public void raiseAttackBy1() {
@@ -129,11 +128,11 @@ public class Diary {
         return isFinished;
     }
 
-    public void isFinished(){
+    private void isFinished(){
         if (threadFinishCounter.get()==5){
             isFinished.compareAndSet(false,true);
             synchronized (isFinished){
-                isFinished.notifyAll();
+                isFinished.notifyAll();//wake up main
             }
         }
     }

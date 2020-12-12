@@ -26,10 +26,6 @@ public class R2D2Microservice extends MicroService {
         terminate = false;
     }
 
-    /**
-     * To Do:
-     * sub broadcast
-     */
 
     @Override
     protected  void initialize() {
@@ -42,18 +38,18 @@ public class R2D2Microservice extends MicroService {
                 e.printStackTrace();
             }
         });
+
         subscribeBroadcast(terminateBroadcastClass, c -> {
             terminate = true;
             terminate();
             myDiary.setR2D2Terminate(System.currentTimeMillis());
         });
-        while (nextMessage == null && !terminate){
-            nextMessage = getNextMessage();// wait for new message to come
-            getCallback(nextMessage.getClass()).call(nextMessage);//get the callback
-            nextMessage = null;//reset
-        }
 
-        System.out.println("R2D2 Done");
+        while (nextMessage == null && !terminate){
+            nextMessage = getNextMessage();
+            getCallback(nextMessage.getClass()).call(nextMessage);
+            nextMessage = null;
+        }
     }
 
 }

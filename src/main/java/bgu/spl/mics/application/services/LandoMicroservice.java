@@ -34,6 +34,7 @@ public class LandoMicroservice  extends MicroService {
                 e.printStackTrace();
             }
         });
+
         subscribeBroadcast(terminateBroadcastClass, c -> {
             terminate = true;
             terminate();
@@ -44,9 +45,7 @@ public class LandoMicroservice  extends MicroService {
         while (nextMessage == null && !terminate){
             nextMessage = getNextMessage();
             getCallback(nextMessage.getClass()).call(nextMessage);
-            nextMessage = null;//reset
+            nextMessage = null;
         }
-
-        System.out.println("Lando Done");
     }
 }

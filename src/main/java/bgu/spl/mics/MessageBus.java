@@ -54,11 +54,11 @@ public interface MessageBus {
      * fashion. This method should be non-blocking.
      * <p>
      * @param <T>    	The type of the result expected by the event and its corresponding future object.
-     * @param e     	The event to add to the queue.
+     * @param e        The event to add to the queue.
      * @return {@link Future<T>} object to be resolved once the processing is complete,
      * 	       null in case no micro-service has subscribed to {@code e.getClass()}.
      */
-    <T> Future<T> sendEvent(Event<T> e);
+    <T> Future sendEvent(Event<T> e);
 
     /**
      * Allocates a message-queue for the {@link MicroService} {@code m}.

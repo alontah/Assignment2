@@ -11,7 +11,7 @@ public class EwokTest {
     public void setUp() throws Exception {
         E1 = new Ewok(1);
         E2 = new Ewok(2);
-        E2.available = false;
+        E2.acquire();
     }
 
     @org.junit.Test
@@ -24,7 +24,7 @@ public class EwokTest {
      **/
     public void acquire() {
         E1.acquire();
-        assertFalse(E1.available);
+        assertFalse(E1.isAvailable());
     }
 
     @org.junit.Test
@@ -37,6 +37,6 @@ public class EwokTest {
      **/
     public void release() {
         E2.release();
-        assertTrue(E2.available);
+        assertTrue(E2.isAvailable());
     }
 }
