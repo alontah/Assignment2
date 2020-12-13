@@ -1,27 +1,19 @@
 package bgu.spl.mics.application;
 
 import bgu.spl.mics.application.passiveObjects.Attack;
-import bgu.spl.mics.application.passiveObjects.Diary;
 
 public class input {
-    private static input instance = null;
     private Attack[] attacks;
-    int R2D2;
-    int Lando;
-    int Ewoks;
+    private int R2D2;
+    private int Lando;
+    private int Ewoks;
 
-    private input(){};
+    public input(){}
 
-    public synchronized static input getInstance(){
-        if (instance==null){
-            instance = new input();
-        }
-        return instance;
-    }
-
-    public int getEwoks() {
+    public int getEwoks(){
         return Ewoks;
     }
+
     public void setEwoks(int ewoks) {
         Ewoks = ewoks;
     }

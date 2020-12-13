@@ -4,11 +4,11 @@ import bgu.spl.mics.Event;
 import bgu.spl.mics.Future;
 
 public class DestroyerEvent implements Event<Boolean> {
-    private Future future;
+    private Future<Boolean> future;
 
     public DestroyerEvent()
     {
-        this.future = new Future();
+        this.future = new Future<>();
     }
 
     public Future getFuture(){

@@ -30,10 +30,12 @@ public class Future<T> {
      * @return return the result of type T if it is available, if not wait until it is available.
      * 	       
      */
-	public synchronized T get() {
+	public T get() {
 		while(!isDone){
 			try {
-				wait();
+				synchronized (this) {
+					this.wait();
+				}
 			} catch (InterruptedException e){
 				e.printStackTrace();
 			}
@@ -74,7 +76,9 @@ public class Future<T> {
 		if(!isDone){
 			try{
 				long temp = unit.convert(timeout,unit);
-				this.wait(temp);
+				synchronized (this) {
+					this.wait(temp);
+				}
 			} catch (InterruptedException e){
 				e.printStackTrace();
 			}

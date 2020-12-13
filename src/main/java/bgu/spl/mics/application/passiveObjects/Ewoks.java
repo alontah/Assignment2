@@ -17,7 +17,6 @@ public class Ewoks {
     private Vector<Ewok> ewokVector;
 
     private static class singletonHolder{
-        private static int numOfEwoks;
         private static Ewoks instance = new Ewoks() ;
     }
 
@@ -36,7 +35,7 @@ public class Ewoks {
     public void acquireEwok (int serialNum) {
         Ewok currentEwok = ewokVector.elementAt(serialNum - 1);
         synchronized (currentEwok) {
-            while (!currentEwok.available) {
+            while (!currentEwok.isAvailable()) {
                 try {
                     currentEwok.wait();
                 } catch (InterruptedException e) {
