@@ -9,7 +9,6 @@ import bgu.spl.mics.application.messages.terminateBroadcast;
 import bgu.spl.mics.application.passiveObjects.Attack;
 
 import java.util.Vector;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * LeiaMicroservices Initialized with Attack objects, and sends them as  {@link AttackEvent}.
@@ -21,8 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class LeiaMicroservice extends MicroService {
 	private Attack[] attacks;
-	private Vector<Future> futures;
-	private AtomicInteger counter = new AtomicInteger(0);
+	private Vector<Future<Boolean>> futures;
 
     public LeiaMicroservice(Attack[] attacks) {
         super("Leia");
@@ -35,20 +33,20 @@ public class LeiaMicroservice extends MicroService {
         for (Attack myAttack: attacks)
         {
             AttackEvent nextAttack = new AttackEvent(myAttack.getDuration(),myAttack.getSerials());
-            Future nextFuture = sendEvent(nextAttack);
-            futures.add(nextFuture);//save vector of future objects
+            Future <Boolean> nextFuture = sendEvent(nextAttack);
+            futures.add(nextFuture);
         }
-        for (Future curr : futures){//wait for all attacks to be  completed
+        for (Future curr : futures){
             curr.get();//get() waits for current future to be done
         }
 
         ShieldEvent shield = new ShieldEvent();
-        Future shieldFuture = sendEvent(shield);//send deactivation event to r2d2
-        shieldFuture.get();//wait for future to finish
+        Future <Boolean> shieldFuture = sendEvent(shield);
+        shieldFuture.get();
 
         DestroyerEvent destroy = new DestroyerEvent();
-        Future destroyFuture = sendEvent(destroy);//send destroyer event to lando
-        destroyFuture.get(); //wait for future to finish
+        Future <Boolean> destroyFuture = sendEvent(destroy);
+        destroyFuture.get();
 
         try {
             sendBroadcast(new terminateBroadcast());
@@ -57,7 +55,5 @@ public class LeiaMicroservice extends MicroService {
         }catch (InterruptedException e){
             e.printStackTrace();
         }
-
-        System.out.println("Leia Done");
     }
 }
